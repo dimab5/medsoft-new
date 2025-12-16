@@ -3,8 +3,10 @@ package com.medsoft.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.medsoft.models.RecognitionResult;
+import com.medsoft.websocket.VoiceWebSocketHandler;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import java.util.regex.Pattern;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
 
     @Value("${vosk.model.path}")
@@ -27,6 +30,7 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
     private TargetDataLine microphone;
     private ExecutorService recognitionExecutor;
     private volatile boolean isListening = false;
+	private final VoiceWebSocketHandler voiceWebSocketHandler;
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -182,42 +186,53 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
         return lowerText.matches(".*(поле|заполни|введи|очисти|удали|готово|заверши|отправь|создай).*");
     }
 
-    private void continuousRecognitionLoop() {
-        byte[] buffer = new byte[4096];
+	private void continuousRecognitionLoop() {
+		byte[] buffer = new byte[4096];
 
-        while (isListening) {
-            try {
-                int bytesRead = microphone.read(buffer, 0, buffer.length);
+		while (isListening) {
+			try {
+				long startTime = System.currentTimeMillis();
 
-                if (bytesRead > 0) {
-                    if (recognizer.acceptWaveForm(buffer, bytesRead)) {
-                        String resultJson = recognizer.getResult();
-                        String text = extractTextFromJson(resultJson);
+				int bytesRead = microphone.read(buffer, 0, buffer.length);
 
-                        if (!text.isEmpty()) {
-                            log.info("Распознано: {}", text);
+				if (bytesRead > 0) {
+					if (recognizer.acceptWaveForm(buffer, bytesRead)) {
+						String resultJson = recognizer.getResult();
+						String text = extractTextFromJson(resultJson);
 
-                            if (isCommand(text)) {
-                                String commandType = identifyCommandType(text);
-                                log.info("Выполняется команда: {}", commandType);
-                                // TODO: Вызвать обработчик команды
-                            } else {
-                                log.info("Данные для поля: {}", text);
-                                // TODO: Записать в активное поле формы
-                            }
-                        }
-                    }
-                }
+						if (!text.isEmpty()) {
+							long processingTime =
+									System.currentTimeMillis() - startTime;
 
-                Thread.sleep(50);
+							log.info("Распознано: {}", text);
 
-            } catch (Exception e) {
-                log.error("Ошибка в цикле распознавания: {}", e.getMessage());
-            }
-        }
-    }
+							RecognitionResult result =
+									createRecognitionResult(text, processingTime);
 
-    private String fixEncoding(String text) {
+							if (result.isCommand()) {
+								log.info(
+										"Выполняется команда: {}",
+										result.getRecognizedCommand()
+								);
+							} else {
+								log.info("Данные для поля: {}", text);
+							}
+
+							voiceWebSocketHandler.broadcast(result);
+						}
+					}
+				}
+
+				Thread.sleep(50);
+
+			} catch (Exception e) {
+				log.error("Ошибка в цикле распознавания: {}", e.getMessage(), e);
+			}
+		}
+	}
+
+
+	private String fixEncoding(String text) {
         if (text == null || text.isEmpty()) {
             return text;
         }

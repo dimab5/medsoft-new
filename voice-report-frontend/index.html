@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Отчет об операции</title>
+</head>
+<body>
+<div id="app">
+    <h1>Заполнение отчета об операции</h1>
+
+    <div class="container">
+        <label>ФИО пациента</label>
+        <input id="patientFullName" />
+
+        <label>ФИО врача</label>
+        <input id="doctorFullName" />
+
+        <label>Диагноз</label>
+        <input id="diagnosis" />
+
+        <label>Описание операции</label>
+        <textarea id="operationDescription"></textarea>
+
+        <label>ФИО заполняющего отчет</label>
+        <input id="fillerFullName" />
+
+        <label>Табельный номер</label>
+        <input id="personalNumber" />
+
+        <div class="buttons">
+            <button id="startBtn">🎤 Начать запись</button>
+            <button id="stopBtn">⏹ Завершить запись</button>
+            <button id="saveBtn">💾 Сохранить отчет</button>
+        </div>
+
+        <div id="log" class="log">Ожидание...</div>
+    </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

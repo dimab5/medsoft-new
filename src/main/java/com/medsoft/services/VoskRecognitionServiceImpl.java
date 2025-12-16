@@ -1,5 +1,7 @@
 package com.medsoft.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.medsoft.models.RecognitionResult;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -10,6 +12,8 @@ import javax.sound.sampled.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -23,6 +27,8 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
     private TargetDataLine microphone;
     private ExecutorService recognitionExecutor;
     private volatile boolean isListening = false;
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final Set<String> COMMANDS = new HashSet<>(Arrays.asList(
             "пациент", "врач", "диагноз", "операция", "заполняющий", "табельный",
@@ -211,15 +217,43 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
         }
     }
 
+    private String fixEncoding(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+
+        Pattern utf8Pattern = Pattern.compile("[РВСТУФХЦЧШЩЪЫЬЭЮЯ]+");
+        Matcher matcher = utf8Pattern.matcher(text);
+
+        if (matcher.find() && text.length() > matcher.group().length() * 2) {
+            try {
+                byte[] bytes = text.getBytes("Windows-1251");
+                String decoded = new String(bytes, "UTF-8");
+
+                if (decoded.matches(".*[А-Яа-яЁё].*") && !decoded.contains("Р")) {
+                    return decoded;
+                }
+            } catch (UnsupportedEncodingException e) {
+                log.warn("Ошибка перекодировки: {}", e.getMessage());
+            }
+        }
+
+        return text;
+    }
+
     private String extractTextFromJson(String json) {
         try {
-            if (json.contains("\"text\" : \"")) {
-                int start = json.indexOf("\"text\" : \"") + 10;
-                int end = json.indexOf("\"", start);
-                return json.substring(start, end);
+            JsonNode jsonNode = objectMapper.readTree(json);
+            String text = jsonNode.get("text").asText();
+
+            if (text == null || text.trim().isEmpty()) {
+                return "";
             }
-            return "";
+
+            return fixEncoding(text);
+
         } catch (Exception e) {
+            log.error("Ошибка извлечения текста из JSON: {} | JSON: {}", e.getMessage(), json);
             return "";
         }
     }

@@ -1,6 +1,9 @@
 package com.medsoft.controllers;
 
+import com.medsoft.models.OperationReport;
 import com.medsoft.models.RecognitionResult;
+import com.medsoft.models.dto.OperationReportDto;
+import com.medsoft.services.OperationReportService;
 import com.medsoft.services.VoiceRecognitionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,34 +28,9 @@ import java.util.*;
 public class VoiceController {
 
     private final VoiceRecognitionService voiceRecognitionService;
+	private final OperationReportService operationReportService;
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
-    /**
-     * Тестирование распознавания из текста (без аудио)
-     */
-    @PostMapping("/test-text")
-    public ResponseEntity<Map<String, Object>> testTextRecognition(@RequestBody String text) {
-        Map<String, Object> result = new HashMap<>();
-
-        try {
-            boolean isCommand = voiceRecognitionService.isCommand(text);
-            String commandType = identifyCommandType(text);
-
-            result.put("originalText", text);
-            result.put("isCommand", isCommand);
-            result.put("commandType", commandType);
-            result.put("confidence", 0.9); // Заглушка для теста
-            result.put("timestamp", LocalDateTime.now().format(formatter));
-
-            log.info("Тест текста: {}", result);
-
-            return ResponseEntity.ok(result);
-
-        } catch (Exception e) {
-            result.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
-        }
-    }
 
     /**
      * Тестирование с записью аудио через микрофон
@@ -178,7 +156,51 @@ public class VoiceController {
         }
     }
 
-    /**
+	@PostMapping("/stop-continuous")
+	public ResponseEntity<Map<String, Object>> stopContinuousRecognition() {
+		Map<String, Object> result = new HashMap<>();
+
+		try {
+			voiceRecognitionService.stopContinuousRecognition();
+
+			result.put("status", "continuous_recognition_stopped");
+			result.put("timestamp", LocalDateTime.now().format(formatter));
+
+			log.info("Непрерывное распознавание остановлено вручную");
+
+			return ResponseEntity.ok(result);
+
+		} catch (Exception e) {
+			log.error("Ошибка остановки распознавания", e);
+			result.put("error", e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+		}
+	}
+
+	@PostMapping("/save-report")
+	public ResponseEntity<?> saveOperationReport(
+			@RequestBody OperationReportDto reportDto) {
+
+		try {
+			OperationReport savedReport =
+					operationReportService.createReport(reportDto);
+
+			log.info("Отчет сохранен с id={}", savedReport.getId());
+
+			return ResponseEntity.ok(Map.of(
+					"status", "saved",
+					"reportId", savedReport.getId(),
+					"createdAt", savedReport.getCreatedAt()
+			));
+
+		} catch (Exception e) {
+			log.error("Ошибка сохранения отчета", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Map.of("error", e.getMessage()));
+		}
+	}
+
+	/**
      * Тестовый набор команд и фраз
      */
     @GetMapping("/test-cases")
@@ -216,40 +238,6 @@ public class VoiceController {
         ));
 
         return ResponseEntity.ok(testCases);
-    }
-
-    /**
-     * Пакетное тестирование
-     */
-    @PostMapping("/batch-test")
-    public ResponseEntity<Map<String, Object>> batchTest() {
-        Map<String, Object> results = new HashMap<>();
-        List<Map<String, Object>> tests = new ArrayList<>();
-
-        String[] testPhrases = {
-                "пациент",
-                "Иванов Иван Иванович",
-                "следующее поле",
-                "диагноз",
-                "острый аппендицит",
-                "готово",
-                "создать pdf",
-                "поле операция"
-        };
-
-        for (String phrase : testPhrases) {
-            Map<String, Object> testResult = new HashMap<>();
-            testResult.put("phrase", phrase);
-            testResult.put("isCommand", voiceRecognitionService.isCommand(phrase));
-            testResult.put("commandType", identifyCommandType(phrase));
-            tests.add(testResult);
-        }
-
-        results.put("tests", tests);
-        results.put("totalTests", testPhrases.length);
-        results.put("timestamp", LocalDateTime.now().format(formatter));
-
-        return ResponseEntity.ok(results);
     }
 
     /**

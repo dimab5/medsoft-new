@@ -36,3 +36,13 @@ export function getReportData() {
     fields.forEach(id => report[id] = document.getElementById(id).value);
     return report;
 }
+
+export function setActiveFieldByName(name) {
+    const index = fields.findIndex(f =>
+        f.toLowerCase().includes(name.toLowerCase())
+    );
+    if (index !== -1) {
+        activeFieldIndex = index;
+        highlight();
+    }
+}

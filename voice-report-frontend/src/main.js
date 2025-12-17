@@ -24,23 +24,38 @@ document.getElementById("saveBtn").onclick = async () => {
     const json = await res.json();
     alert("Отчет сохранен. ID: " + json.reportId);
 };
-
 function handleRecognition(data) {
     if (!data.isCommand) {
         ui.writeText(data.text);
         return;
     }
 
-    switch (data.commandType) {
+    switch (data.recognizedCommand) {
+
         case "NEXT_FIELD":
             ui.nextField();
             break;
+
         case "PREVIOUS_FIELD":
             ui.prevField();
             break;
+
         case "COMPLETE":
             ws.disconnect();
             api.saveReport(ui.getReportData());
             break;
+
+        default:
+            // FIELD_PATIENTFIELD и т.п.
+            if (data.recognizedCommand.startsWith("FIELD_")) {
+                const fieldName =
+                    data.recognizedCommand
+                        .replace("FIELD_", "")
+                        .replace("FIELD", "")
+                        .toLowerCase();
+
+                ui.setActiveFieldByName(fieldName);
+            }
     }
 }
+

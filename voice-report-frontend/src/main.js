@@ -2,6 +2,7 @@ import "./style.css";
 import * as api from "./api";
 import * as ws from "./ws";
 import * as ui from "./ui";
+import {resetForm} from "./ui";
 
 const log = (msg) => document.getElementById("log").innerText = msg;
 
@@ -44,12 +45,11 @@ function handleRecognition(data) {
             break;
 
         case "COMPLETE":
-            ws.disconnect();
             api.saveReport(ui.getReportData());
+            resetForm()
             break;
 
         default:
-            // FIELD_PATIENTFIELD и т.п.
             if (data.recognizedCommand.startsWith("FIELD_")) {
                 const fieldName =
                     data.recognizedCommand

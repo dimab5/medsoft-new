@@ -221,7 +221,7 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
         String commandType = isCmd ? identifyCommandType(text) : "";
         double confidence = calculateConfidence(text);
 
-        return new RecognitionResult(text, isCmd, commandType, confidence, processingTime);
+        return new RecognitionResult(mapDigitsInText(text), isCmd, commandType, confidence, processingTime);
     }
 
     private String identifyCommandType(String text) {
@@ -283,5 +283,26 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
         }
 
         log.info("Сервис распознавания речи остановлен");
+    }
+
+    private String mapDigitsInText(String text) {
+        Map<String, String> digitMap = new HashMap<>();
+        digitMap.put("один", "1");
+        digitMap.put("два", "2");
+        digitMap.put("три", "3");
+        digitMap.put("четыре", "4");
+        digitMap.put("пять", "5");
+        digitMap.put("шесть", "6");
+        digitMap.put("семь", "7");
+        digitMap.put("восемь", "8");
+        digitMap.put("девять", "9");
+        digitMap.put("ноль", "0");
+
+        String result = text;
+        for (Map.Entry<String, String> entry : digitMap.entrySet()) {
+            result = result.replaceAll("(?i)" + Pattern.quote(entry.getKey()), entry.getValue());
+        }
+
+        return result;
     }
 }

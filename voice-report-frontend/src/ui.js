@@ -46,3 +46,16 @@ export function setActiveFieldByName(name) {
         highlight();
     }
 }
+
+export function resetForm() {
+    activeFieldIndex = 0;
+
+    fields.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.value = "";
+        }
+    });
+
+    highlight();
+}

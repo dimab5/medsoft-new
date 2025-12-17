@@ -24,8 +24,11 @@ document.getElementById("saveBtn").onclick = async () => {
     const json = await res.json();
     alert("Отчет сохранен. ID: " + json.reportId);
 };
+
 function handleRecognition(data) {
-    if (!data.isCommand) {
+    console.log(data)
+
+    if (!data.command) {
         ui.writeText(data.text);
         return;
     }

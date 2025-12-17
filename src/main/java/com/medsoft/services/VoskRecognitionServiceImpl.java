@@ -36,7 +36,7 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
 
     private static final Set<String> COMMANDS = new HashSet<>(Arrays.asList(
             "пациент", "врач", "диагноз", "операция", "заполняющий", "табельный",
-            "следующее поле", "предыдущее поле", "готово", "завершить",
+            "следующее", "предыдущее", "готово", "завершить",
             "очистить", "отмена", "создать pdf", "отправить отчет",
             "поле диагноз", "поле операция", "поле пациент", "поле врач"
     ));
@@ -66,66 +66,6 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
         } catch (Exception e) {
             log.error("Ошибка инициализации Vosk: {}", e.getMessage(), e);
             throw new RuntimeException("Не удалось инициализировать Vosk", e);
-        }
-    }
-
-    @Override
-    public RecognitionResult recognizeFromFile(String audioFilePath) {
-        long startTime = System.currentTimeMillis();
-
-        try (InputStream ais = new FileInputStream(audioFilePath)) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            StringBuilder resultBuilder = new StringBuilder();
-
-            while ((bytesRead = ais.read(buffer)) >= 0) {
-                if (recognizer.acceptWaveForm(buffer, bytesRead)) {
-                    String resultJson = recognizer.getResult();
-                    String text = extractTextFromJson(resultJson);
-                    if (!text.isEmpty()) {
-                        resultBuilder.append(text).append(" ");
-                    }
-                }
-            }
-
-            String finalResult = recognizer.getFinalResult();
-            String finalText = extractTextFromJson(finalResult);
-            if (!finalText.isEmpty()) {
-                resultBuilder.append(finalText);
-            }
-
-            String recognizedText = resultBuilder.toString().trim();
-            long processingTime = System.currentTimeMillis() - startTime;
-
-            return createRecognitionResult(recognizedText, processingTime);
-
-        } catch (IOException e) {
-            log.error("Ошибка чтения аудиофайла: {}", e.getMessage());
-            return new RecognitionResult("", false, "", 0.0, 0);
-        }
-    }
-
-    @Override
-    public RecognitionResult recognizeFromBytes(byte[] audioData) {
-        long startTime = System.currentTimeMillis();
-
-        try {
-            byte[] pcmData = convertAudioToPCM(audioData);
-
-            if (recognizer.acceptWaveForm(pcmData, pcmData.length)) {
-                String resultJson = recognizer.getResult();
-                String recognizedText = extractTextFromJson(resultJson);
-                long processingTime = System.currentTimeMillis() - startTime;
-
-                return createRecognitionResult(recognizedText, processingTime);
-            }
-
-            return new RecognitionResult("", false, "", 0.0,
-                    System.currentTimeMillis() - startTime);
-
-        } catch (Exception e) {
-            log.error("Ошибка распознавания: {}", e.getMessage());
-            return new RecognitionResult("", false, "", 0.0, 0);
         }
     }
 
@@ -231,7 +171,6 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
 		}
 	}
 
-
 	private String fixEncoding(String text) {
         if (text == null || text.isEmpty()) {
             return text;
@@ -317,10 +256,6 @@ public class VoskRecognitionServiceImpl implements VoiceRecognitionService {
         if (text.length() < 2) return 0.1;
         if (text.split(" ").length > 5) return 0.9;
         return 0.5 + (text.length() * 0.05);
-    }
-
-    private byte[] convertAudioToPCM(byte[] audioData) {
-        return audioData;
     }
 
     @PreDestroy

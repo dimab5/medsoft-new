@@ -28,29 +28,5 @@ public class OperationReportServiceImpl implements OperationReportService {
 
 		return reportRepository.save(report);
 	}
-
-	@Override
-	public OperationReport updateField(Long reportId, String fieldName, String value) {
-		OperationReport report = reportRepository.findById(reportId)
-				.orElseThrow(() -> new RuntimeException("Отчет не найден"));
-
-		switch (fieldName) {
-			case "patientField" -> report.setPatientFullName(value);
-			case "doctorField" -> report.setDoctorFullName(value);
-			case "diagnosisField" -> report.setDiagnosis(value);
-			case "operationField" -> report.setOperationDescription(value);
-			case "fillerField" -> report.setFillerFullName(value);
-			case "personalNumberField" -> report.setPersonalNumber(value);
-			default -> throw new IllegalArgumentException("Неизвестное поле: " + fieldName);
-		}
-
-		return reportRepository.save(report);
-	}
-
-	@Override
-	public OperationReport getReport(Long reportId) {
-		return reportRepository.findById(reportId)
-				.orElseThrow(() -> new RuntimeException("Отчет не найден"));
-	}
 }
 
